@@ -7,10 +7,29 @@ Simple browser Minecraft-style prototype built with Three.js.
 From this folder:
 
 ```powershell
+npm install
+npm run start
+```
+
+Then open the local URL printed by `serve` (typically `http://localhost:3000`).
+
+Alternative:
+
+```powershell
 python -m http.server 8000
 ```
 
 Then open `http://localhost:8000`.
+
+## Scripts
+
+- `npm run start`: run local static server with `serve`.
+- `npm test`: placeholder test command (`No tests yet`).
+
+## Project Baseline
+
+- `.editorconfig` enforces consistent formatting defaults.
+- `.gitignore` excludes generated files and local noise (`node_modules`, logs, env files, etc.).
 
 ## Controls
 

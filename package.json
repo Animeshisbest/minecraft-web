@@ -1,0 +1,17 @@
+{
+  "name": "minecraft-web",
+  "version": "1.0.0",
+  "description": "Simple browser Minecraft-style prototype built with Three.js.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0",
+    "start": "serve ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "serve": "^14.2.5"
+  }
+}
