@@ -6,3 +6,4 @@ coverage/
 Thumbs.db
 *.log
 .env
+*.pre-isolation.bak
