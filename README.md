@@ -27,12 +27,14 @@ Open `http://localhost:8000`.
 ## Core Features
 
 - Procedural world generation with multiple biomes.
+- Cave carving in underground layers for explorable tunnels.
 - Block breaking/placing with inventory counts.
 - Hotbar with number-key and mouse-wheel selection.
 - Inventory UI with item selection and gear equip slots.
 - Crafting recipes with input/output validation.
 - Passive mobs (cow/sheep/chicken) and hostile mobs (zombie/skeleton/creeper).
 - Day/night cycle with sun/moon visuals and dynamic lighting.
+- Visible first-person player hands with movement sway.
 - SFX for gameplay actions (place/break/hurt/craft/etc.).
 
 ## Controls
@@ -67,4 +69,3 @@ Open `http://localhost:8000`.
 - Cleaned repository by removing obsolete `*.pre-isolation.bak` files.
 - Added ignore rule for backup artifacts.
 - Restructured README for setup, features, controls, and workflow clarity.
-

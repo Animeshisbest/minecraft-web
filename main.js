@@ -16,6 +16,7 @@ const ENTITY_HIT_RANGE = 4.5;
 const SKELETON_ARROW_SPEED = 17;
 const SKELETON_ARROW_DAMAGE = 10;
 const SKELETON_ARROW_LIFE = 2.6;
+const CAVE_MIN_Y = 3;
 const TOOL_ORDER = ["hand", "wood", "stone", "iron", "diamond"];
 const ARMOR_ORDER = ["none", "leather", "iron", "diamond"];
 const TOOL_DAMAGE_MULT = { hand: 1, wood: 1.15, stone: 1.35, iron: 1.6, diamond: 1.9 };
@@ -407,6 +408,37 @@ const playerSkinPreviewUrl = (() => {
   return canvas.toDataURL();
 })();
 
+function createPlayerHands() {
+  const group = new THREE.Group();
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0xf3c89f, depthTest: false, depthWrite: false });
+  const sleeveMat = new THREE.MeshLambertMaterial({ color: 0x2a6fd1, depthTest: false, depthWrite: false });
+  const armGeo = new THREE.BoxGeometry(0.14, 0.28, 0.14);
+  const cuffGeo = new THREE.BoxGeometry(0.15, 0.1, 0.15);
+
+  const leftArm = new THREE.Mesh(armGeo, skinMat);
+  leftArm.position.set(-0.28, -0.34, -0.45);
+  leftArm.rotation.set(-0.35, 0.18, 0.1);
+  leftArm.renderOrder = 1000;
+
+  const rightArm = new THREE.Mesh(armGeo, skinMat);
+  rightArm.position.set(0.28, -0.34, -0.45);
+  rightArm.rotation.set(-0.35, -0.18, -0.1);
+  rightArm.renderOrder = 1000;
+
+  const leftCuff = new THREE.Mesh(cuffGeo, sleeveMat);
+  leftCuff.position.set(-0.28, -0.22, -0.44);
+  leftCuff.rotation.copy(leftArm.rotation);
+  leftCuff.renderOrder = 1001;
+
+  const rightCuff = new THREE.Mesh(cuffGeo, sleeveMat);
+  rightCuff.position.set(0.28, -0.22, -0.44);
+  rightCuff.rotation.copy(rightArm.rotation);
+  rightCuff.renderOrder = 1001;
+
+  group.add(leftArm, rightArm, leftCuff, rightCuff);
+  return { group, leftArm, rightArm, leftCuff, rightCuff };
+}
+
 function makeBoxMaterials(sideTex, topTex, bottomTex, frontTex, backTex = sideTex) {
   return [
     makeMaterial(sideTex),
@@ -645,6 +677,7 @@ let dayTime = 0.25;
 let mobSpawnTimer = 0;
 let wasNight = false;
 let footstepTimer = 0;
+let handSwingTime = 0;
 let audioCtx = null;
 const SFX_VOLUME_BOOST = 1.9;
 
@@ -653,6 +686,8 @@ const pitch = new THREE.Object3D();
 yaw.add(pitch);
 pitch.position.y = PLAYER_HEIGHT;
 pitch.add(camera);
+const handRig = createPlayerHands();
+camera.add(handRig.group);
 scene.add(yaw);
 
 const hudHotbar = document.getElementById("hotbar");
@@ -915,6 +950,24 @@ function biomeNoise(x, z) {
   );
 }
 
+function caveNoise(x, y, z) {
+  return (
+    Math.sin(x * 0.19 + y * 0.16 + z * 0.17) +
+    Math.cos(x * 0.13 - y * 0.21 + z * 0.11) +
+    Math.sin((x - z) * 0.09 + y * 0.29)
+  );
+}
+
+function shouldCarveCave(x, y, z, surfaceY) {
+  if (y < CAVE_MIN_Y) return false;
+  if (y >= surfaceY - 1) return false;
+  const depth = (surfaceY - y) / Math.max(1, surfaceY);
+  const threshold = 1.16 - Math.min(0.25, depth * 0.22);
+  if (caveNoise(x, y, z) <= threshold) return false;
+  // Secondary check keeps caves more tunnel-like instead of hollowing entire chunks.
+  return Math.sin(x * 0.045 + z * 0.045 + y * 0.31) > -0.45;
+}
+
 function biomeAt(x, z) {
   const n = biomeNoise(x, z);
   if (n < -0.25) {
@@ -998,6 +1051,9 @@ function generateWorld() {
           if (ore) type = ore;
         }
         setBlock(x, y, z, type);
+      }
+      for (let y = CAVE_MIN_Y; y <= h - 2; y++) {
+        if (shouldCarveCave(x, y, z, h)) setBlock(x, y, z, 0);
       }
       if (h > SEA_LEVEL + 1 && biome.treeChance > 0 && Math.random() < biome.treeChance) {
         const style = biome.kind === BIOMES.TAIGA ? "taiga" : "oak";
@@ -1426,6 +1482,30 @@ function updateDayNight(dt) {
   scene.fog.color.copy(currentSkyColor);
   scene.fog.near = 20 + daylight * 20;
   scene.fog.far = 85 + daylight * 65;
+}
+
+function updatePlayerHands(dt) {
+  const isActive = document.pointerLockElement === renderer.domElement && !inventoryOpen;
+  handRig.group.visible = isActive;
+  if (!isActive) return;
+
+  const speed = Math.hypot(velocity.x, velocity.z);
+  const moving = canJump && speed > 0.25;
+  if (moving) handSwingTime += dt * Math.min(18, 6 + speed * 2.5);
+  const idle = performance.now() * 0.0025;
+
+  const swing = moving ? Math.sin(handSwingTime) * 0.06 : Math.sin(idle) * 0.01;
+  const rise = moving ? Math.abs(Math.sin(handSwingTime)) * 0.028 : Math.abs(Math.sin(idle)) * 0.007;
+
+  handRig.leftArm.position.y = -0.34 + rise;
+  handRig.rightArm.position.y = -0.34 + rise;
+  handRig.leftArm.rotation.x = -0.35 + swing;
+  handRig.rightArm.rotation.x = -0.35 - swing;
+
+  handRig.leftCuff.position.y = -0.22 + rise;
+  handRig.rightCuff.position.y = -0.22 + rise;
+  handRig.leftCuff.rotation.x = handRig.leftArm.rotation.x;
+  handRig.rightCuff.rotation.x = handRig.rightArm.rotation.x;
 }
 
 function findSurfaceY(x, z) {
@@ -2099,6 +2179,7 @@ function tick() {
   updateDayNight(dt);
   manageMobPopulation(dt);
   movePlayer(dt);
+  updatePlayerHands(dt);
   updateEntities(dt);
   updateSkeletonArrows(dt);
 
