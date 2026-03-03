@@ -30,6 +30,7 @@ Then open `http://localhost:8000`.
 
 - `.editorconfig` enforces consistent formatting defaults.
 - `.gitignore` excludes generated files and local noise (`node_modules`, logs, env files, etc.).
+- `html, body` no longer use fixed positioning, so page layout behaves normally while the canvas/HUD remain fixed.
 
 ## Controls
 
@@ -44,6 +45,12 @@ Then open `http://localhost:8000`.
 - `Esc`: unlock pointer
 - Renderer canvas is forced to full viewport so world fills the screen.
 - Hearts are fixed at the bottom center for stable display.
+- A horizontal 10-slot hotbar is centered above the hearts.
+
+## Debug Notes (Temporary)
+
+- Hotbar is currently in forced debug mode with hardcoded `.slot` elements and minimal red/blue styles for layout isolation.
+- Full isolation mode is currently active: only `#hotbar` and `.slot` test markup/styles remain until visual verification is complete.
 
 ## Creatures
 

@@ -48,6 +48,7 @@ const BLOCK_TYPES = {
   24: { name: "DiamondOre", material: "diamondOre", preview: "diamondOre" },
 };
 const HOTBAR_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+let hotbar = [...HOTBAR_IDS];
 
 const PLANT_BLOCK_IDS = new Set([17, 18, 19, 20]);
 
@@ -659,7 +660,6 @@ const statusHud = document.getElementById("status");
 const inventoryPanel = document.getElementById("inventory");
 initializeInventory();
 renderInventory();
-buildHotbar();
 
 function initializeInventory() {
   Object.keys(BLOCK_TYPES).forEach((id) => {
@@ -796,8 +796,7 @@ function eatFood() {
   playerHealth = Math.min(MAX_HEALTH, playerHealth + EAT_HEAL);
   playSfx("eat");
   updateStatusHud();
-  buildHotbar();
-  renderInventory();
+  refreshUI();
 }
 
 function addToInventory(type, amount = 1) {
@@ -842,8 +841,7 @@ function craftRecipe(recipeId) {
   const firstOutput = Number(Object.keys(recipe.out)[0]);
   if (BLOCK_TYPES[firstOutput]) selectedType = firstOutput;
   playSfx("craft");
-  buildHotbar();
-  renderInventory();
+  refreshUI();
 }
 
 function keyOf(x, y, z) {
@@ -1059,25 +1057,66 @@ function placePlant(x, y, z, biomeKind) {
   setBlock(x, y, z, type);
 }
 
+function refreshUI() {
+  buildHotbar();
+  if (inventoryOpen) renderInventory();
+}
+
+function setSelectedType(type) {
+  if (!BLOCK_TYPES[type]) return false;
+  selectedType = type;
+  refreshUI();
+  return true;
+}
+
+function cycleHotbar(step) {
+  const total = hotbar.length;
+  if (total <= 0) return false;
+
+  let index = hotbar.indexOf(selectedType);
+  if (index < 0) index = step > 0 ? -1 : 0;
+  const nextIndex = (index + step + total) % total;
+  const nextType = hotbar[nextIndex];
+  if (!BLOCK_TYPES[nextType]) return false;
+
+  selectedType = nextType;
+  refreshUI();
+  return true;
+}
+
 function buildHotbar() {
   if (!hudHotbar) return;
+
   hudHotbar.innerHTML = "";
-  HOTBAR_IDS.forEach((numericId) => {
+
+  hotbar.forEach((numericId) => {
     const id = String(numericId);
-    const block = BLOCK_TYPES[numericId];
-    if (!block) return;
     const count = inventory[id] ?? 0;
+
     const slot = document.createElement("div");
-    slot.className = `slot ${numericId === selectedType ? "active" : ""} ${count <= 0 ? "empty" : ""}`;
-    slot.dataset.id = id;
-    slot.title = `${id}: ${block.name} (${count})`;
-    slot.innerHTML = `<div class="swatch" style="background-image:url('${hotbarPreviews[id]}')"></div><div class="count">${count}</div>`;
-    slot.addEventListener("click", () => {
-      playSfx("click");
-      selectedType = numericId;
-      buildHotbar();
-      renderInventory();
-    });
+    slot.classList.add("slot");
+
+    if (numericId === selectedType) {
+      slot.classList.add("active");
+    }
+
+    if (count <= 0) {
+      slot.classList.add("empty");
+    }
+
+    const swatch = document.createElement("div");
+    swatch.classList.add("swatch");
+    swatch.style.backgroundImage = `url(${hotbarPreviews[numericId]})`;
+
+    slot.appendChild(swatch);
+
+    if (count > 0) {
+      const countLabel = document.createElement("div");
+      countLabel.classList.add("count");
+      countLabel.textContent = count;
+      slot.appendChild(countLabel);
+    }
+
     hudHotbar.appendChild(slot);
   });
 }
@@ -1138,9 +1177,7 @@ function renderInventory() {
   inventoryPanel.querySelectorAll(".inv-slot").forEach((el) => {
     el.addEventListener("click", () => {
       playSfx("click");
-      selectedType = Number(el.dataset.id);
-      buildHotbar();
-      renderInventory();
+      setSelectedType(Number(el.dataset.id));
     });
   });
   inventoryPanel.querySelectorAll(".craft-btn").forEach((el) => {
@@ -1154,7 +1191,7 @@ function renderInventory() {
       playSfx("click");
       equippedTool = el.dataset.tool;
       updateStatusHud();
-      renderInventory();
+      refreshUI();
     });
   });
   inventoryPanel.querySelectorAll("[data-armor]").forEach((el) => {
@@ -1162,7 +1199,7 @@ function renderInventory() {
       playSfx("click");
       equippedArmor = el.dataset.armor;
       updateStatusHud();
-      renderInventory();
+      refreshUI();
     });
   });
 }
@@ -1172,6 +1209,7 @@ function setInventoryOpen(open) {
   if (open) keys.clear();
   playSfx(open ? "inventoryOpen" : "inventoryClose");
   inventoryPanel.classList.toggle("hidden", !open);
+  refreshUI();
 }
 
 function updateOverlayState() {
@@ -1232,8 +1270,7 @@ function killEntity(entity, giveDrops = true) {
   }
   playSfx("break");
   removeEntity(entity);
-  buildHotbar();
-  renderInventory();
+  refreshUI();
 }
 
 function hitEntity(entity, damage) {
@@ -1866,8 +1903,7 @@ function handleBlockAction(button) {
     setBlock(x, y, z, 0);
     addToInventory(brokenType, 1);
     playSfx("break");
-    buildHotbar();
-    renderInventory();
+    refreshUI();
     return;
   }
 
@@ -1877,8 +1913,7 @@ function handleBlockAction(button) {
       setBlock(placePos.x, placePos.y, placePos.z, selectedType);
       removeFromInventory(selectedType, 1);
       playSfx("place");
-      buildHotbar();
-      renderInventory();
+      refreshUI();
     }
   }
 }
@@ -1998,14 +2033,23 @@ document.addEventListener("keydown", (e) => {
   if (e.code.startsWith("Digit")) {
     const num = Number(e.code.slice(-1));
     const hotbarIndex = num === 0 ? 9 : num - 1;
-    const slotType = HOTBAR_IDS[hotbarIndex];
-    if (slotType && BLOCK_TYPES[slotType]) {
-      selectedType = slotType;
-      buildHotbar();
-      renderInventory();
-    }
+    const slotType = hotbar[hotbarIndex];
+    if (slotType && BLOCK_TYPES[slotType]) setSelectedType(slotType);
   }
 });
+
+window.addEventListener(
+  "wheel",
+  (e) => {
+    if (inventoryOpen) return;
+    ensureAudio();
+    const changed = cycleHotbar(e.deltaY > 0 ? 1 : -1);
+    if (!changed) return;
+    playSfx("click");
+    e.preventDefault();
+  },
+  { passive: false }
+);
 
 document.addEventListener("keyup", (e) => keys.delete(e.code));
 document.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -2045,6 +2089,7 @@ spawnPoint.copy(findSpawnPoint());
 yaw.position.copy(spawnPoint);
 spawnEntities();
 wasNight = isNightTime();
+refreshUI();
 updateStatusHud();
 
 const clock = new THREE.Clock();

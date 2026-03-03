@@ -2,18 +2,22 @@
   box-sizing: border-box;
 }
 
+:root {
+  --hotbar-bottom: max(16px, env(safe-area-inset-bottom));
+  --status-gap: clamp(72px, 12vh, 108px);
+}
+
 html,
 body {
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  position: fixed;
-  inset: 0;
   font-family: Consolas, "Courier New", monospace;
   background: linear-gradient(180deg, #8fd0ff 0%, #d9f1ff 100%);
 }
 
+/* Canvas */
 canvas {
   position: fixed;
   inset: 0;
@@ -23,6 +27,7 @@ canvas {
   z-index: 0;
 }
 
+/* HUD */
 #hud {
   position: fixed;
   top: 12px;
@@ -39,40 +44,26 @@ canvas {
   font-weight: 700;
 }
 
+/* Hearts */
 #status {
   position: fixed;
   left: 50%;
-  bottom: 16px;
+  bottom: calc(var(--hotbar-bottom) + var(--status-gap));
   transform: translateX(-50%);
   font-size: 32px;
-  z-index: 40;
-  text-align: center;
-  width: max-content;
-  max-width: 96vw;
+  z-index: 60;
 }
 
 .hearts {
   color: #ff5a5a;
   letter-spacing: 2px;
-  text-shadow: 0 2px 0 #000000aa;
 }
 
 .empty-hearts {
   color: #d9d9d9;
 }
 
-.equip-hud {
-  display: block;
-  margin-top: 4px;
-  font-size: 14px;
-  color: #ffe36a;
-  text-shadow: 0 2px 0 #000000aa;
-}
-
-.status-meta {
-  margin-left: 10px;
-}
-
+/* Crosshair */
 #crosshair {
   position: fixed;
   left: 50%;
@@ -85,6 +76,18 @@ canvas {
   z-index: 30;
 }
 
+/* HOTBAR */
+#hotbar {
+  position: fixed;
+  left: 50%;
+  bottom: var(--hotbar-bottom);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 50;
+}
+
+/* SLOT */
 .slot {
   position: relative;
   width: 44px;
@@ -93,12 +96,13 @@ canvas {
   background: #00000055;
   display: grid;
   place-items: center;
-  font-size: 14px;
+  transition: transform 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
 }
 
 .slot.active {
   border-color: #ffe36a;
   box-shadow: 0 0 10px #ffe36a99 inset;
+  transform: scale(1.1);
 }
 
 .slot.empty {
@@ -108,9 +112,8 @@ canvas {
 .swatch {
   width: 22px;
   height: 22px;
-  border: 1px solid #00000066;
-  image-rendering: pixelated;
   background-size: cover;
+  image-rendering: pixelated;
 }
 
 .count {
@@ -119,9 +122,9 @@ canvas {
   bottom: 0;
   font-size: 12px;
   color: #fff;
-  text-shadow: 1px 1px 0 #000;
 }
 
+/* INVENTORY */
 #inventory {
   position: fixed;
   left: 50%;
@@ -133,215 +136,9 @@ canvas {
   overflow-y: auto;
   background: #c6c6c6f2;
   border: 3px solid #1f1f1f;
-  box-shadow: inset 2px 2px 0 #ffffff80, inset -2px -2px 0 #5f5f5f;
-  color: #101010;
   padding: 12px;
-  pointer-events: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #8f8f8f #b8b8b8;
-}
-
-#inventory::-webkit-scrollbar {
-  width: 10px;
-}
-
-#inventory::-webkit-scrollbar-track {
-  background: #b8b8b8;
-}
-
-#inventory::-webkit-scrollbar-thumb {
-  background: #8f8f8f;
-  border-radius: 0;
 }
 
 #inventory.hidden {
   display: none;
-}
-
-#inventory h2 {
-  margin: 0 0 8px;
-  font-size: 18px;
-  color: #151515;
-  text-shadow: 1px 1px 0 #ffffff90;
-}
-
-.craft-title {
-  margin: 12px 0 6px;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #1f1f1f;
-}
-
-.player-preview {
-  margin-bottom: 10px;
-  padding: 8px;
-  border: 2px solid #6e6e6e;
-  background: #9d9d9d;
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-}
-
-.skin-swatch {
-  width: 128px;
-  height: 128px;
-  border: 2px solid #00000066;
-  image-rendering: pixelated;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-.skin-label {
-  font-size: 13px;
-  letter-spacing: 0.5px;
-}
-
-.inv-meta {
-  margin: 0 0 8px;
-  font-size: 12px;
-  padding: 4px 6px;
-  border: 2px solid #7a7a7a;
-  background: #b3b3b3;
-}
-
-.inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 4px;
-}
-
-.inv-slot {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  border: 2px solid #4f4f4f;
-  box-shadow: inset 1px 1px 0 #d9d9d9, inset -1px -1px 0 #222;
-  background: #8f8f8f;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.inv-slot.active {
-  border-color: #f5f195;
-  box-shadow: inset 1px 1px 0 #fff9bf, inset -1px -1px 0 #5f5200;
-}
-
-.inv-slot.empty {
-  opacity: 0.55;
-}
-
-.inv-slot .swatch {
-  width: 22px;
-  height: 22px;
-}
-
-.inv-slot-id {
-  position: absolute;
-  left: 2px;
-  top: 1px;
-  font-size: 9px;
-  color: #1a1a1a;
-  text-shadow: 1px 1px 0 #ffffff70;
-}
-
-.inv-count {
-  position: absolute;
-  right: 2px;
-  bottom: 1px;
-  font-size: 12px;
-  color: #111;
-  text-shadow: 1px 1px 0 #ffffff80;
-}
-
-.craft-grid {
-  display: grid;
-  gap: 8px;
-}
-
-.craft-btn {
-  text-align: left;
-  border: 2px solid #5e5e5e;
-  box-shadow: inset 1px 1px 0 #dcdcdc, inset -1px -1px 0 #2e2e2e;
-  background: #9a9a9a;
-  color: #111;
-  padding: 8px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.craft-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.craft-btn:hover:not(:disabled) {
-  border-color: #f0e68b;
-}
-
-.craft-name {
-  font-size: 14px;
-}
-
-.craft-line {
-  margin-top: 2px;
-  font-size: 12px;
-  opacity: 0.9;
-}
-
-.equip-group {
-  border: 2px solid #6f6f6f;
-  background: #ababab;
-  padding: 8px;
-}
-
-.equip-label {
-  font-size: 12px;
-  margin: 2px 0 6px;
-  opacity: 0.9;
-}
-
-.equip-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.equip-btn {
-  border: 2px solid #5e5e5e;
-  box-shadow: inset 1px 1px 0 #dcdcdc, inset -1px -1px 0 #2e2e2e;
-  background: #969696;
-  color: #101010;
-  font-family: inherit;
-  font-size: 12px;
-  padding: 6px 4px;
-  cursor: pointer;
-}
-
-.equip-btn.active,
-.equip-btn:hover {
-  border-color: #f0e68b;
-}
-
-@media (max-width: 700px) {
-  #status {
-    font-size: 26px;
-    bottom: 14px;
-  }
-
-  .inventory-grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
-
-  .inv-slot .swatch {
-    width: 18px;
-    height: 18px;
-  }
-
-  .equip-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
