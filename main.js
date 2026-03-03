@@ -449,8 +449,18 @@ const playerSkinPreviewUrl = playerSkinData.previewUrl;
 
 function createPlayerHands() {
   const group = new THREE.Group();
-  const skinMat = new THREE.MeshLambertMaterial({ color: playerSkinData.skinColor, depthTest: false, depthWrite: false });
-  const sleeveMat = new THREE.MeshLambertMaterial({ color: playerSkinData.sleeveColor, depthTest: false, depthWrite: false });
+  const skinMat = new THREE.MeshLambertMaterial({
+    color: playerSkinData.skinColor,
+    depthTest: false,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+  });
+  const sleeveMat = new THREE.MeshLambertMaterial({
+    color: playerSkinData.sleeveColor,
+    depthTest: false,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+  });
   const armGeo = new THREE.BoxGeometry(0.14, 0.28, 0.14);
   const cuffGeo = new THREE.BoxGeometry(0.15, 0.1, 0.15);
 
