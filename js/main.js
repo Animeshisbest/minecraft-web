@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js";
+import { initScene, syncRendererSize } from "./scene.js";
 
 const WORLD_SIZE = 64;
 const WORLD_HEIGHT = 28;
@@ -76,52 +77,10 @@ const BIOMES = {
   ROCKY: "rocky",
 };
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8fd0ff);
-scene.fog = new THREE.Fog(0x8fd0ff, 40, 150);
+const { scene, camera, renderer, sun, moonLight, ambient, sunVisual, moonVisual } = initScene();
 const DAY_SKY_COLOR = new THREE.Color(0x8fd0ff);
 const NIGHT_SKY_COLOR = new THREE.Color(0x101c36);
 const currentSkyColor = new THREE.Color();
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 0, 0);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-function syncRendererSize() {
-  const w = Math.max(1, window.innerWidth);
-  const h = Math.max(1, window.innerHeight);
-  if (renderer.domElement.width !== Math.floor(w * renderer.getPixelRatio()) || renderer.domElement.height !== Math.floor(h * renderer.getPixelRatio())) {
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-  }
-}
-
-const sun = new THREE.DirectionalLight(0xfff5cf, 1.1);
-sun.position.set(20, 35, 8);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
-scene.add(sun);
-const moonLight = new THREE.DirectionalLight(0x8ba7ff, 0.2);
-moonLight.position.set(-20, -35, -8);
-scene.add(moonLight);
-const ambient = new THREE.AmbientLight(0x86a9bf, 0.65);
-scene.add(ambient);
-const sunVisual = new THREE.Mesh(
-  new THREE.SphereGeometry(2.3, 16, 16),
-  new THREE.MeshBasicMaterial({ color: 0xffe08a })
-);
-const moonVisual = new THREE.Mesh(
-  new THREE.SphereGeometry(1.7, 16, 16),
-  new THREE.MeshBasicMaterial({ color: 0xdce6ff })
-);
-scene.add(sunVisual);
-scene.add(moonVisual);
 
 const world = new Map();
 const meshes = new Map();
@@ -2403,10 +2362,6 @@ document.addEventListener("mousemove", (e) => {
   yaw.rotation.y -= e.movementX * 0.0022;
   pitch.rotation.x -= e.movementY * 0.0022;
   pitch.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch.rotation.x));
-});
-
-window.addEventListener("resize", () => {
-  syncRendererSize();
 });
 
 generateWorld();

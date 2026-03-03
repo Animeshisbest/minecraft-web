@@ -57,7 +57,7 @@ Open `http://localhost:8000`.
 ## Project Files
 
 - `js/main.js`: current runtime entry (rendering, game logic, entities, world, inventory/crafting, and input).
-- `js/scene.js`: scene module scaffold.
+- `js/scene.js`: scene/camera/renderer/lighting bootstrap and resize handling.
 - `js/world.js`: world generation module scaffold.
 - `js/player.js`: player module scaffold.
 - `js/controls.js`: controls module scaffold.
