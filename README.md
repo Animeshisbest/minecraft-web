@@ -40,12 +40,17 @@ Then open `http://localhost:8000`.
 - `E`: open/close inventory
 - `Left click`: break block
 - `Right click`: place block
+- `Mouse wheel`: cycle hotbar selection
 - `1-0`: quick-select block type
 - Inventory `Gear` section: equip tool tier and armor tier
 - `Esc`: unlock pointer
 - Renderer canvas is forced to full viewport so world fills the screen.
 - Hearts are fixed at the bottom center for stable display.
 - A horizontal 10-slot hotbar is centered above the hearts.
+
+## Maintenance Rule
+
+- After each project update, update `README.md` in the same change so controls, behavior, and feature notes stay current.
 
 ## Debug Notes (Temporary)
 
