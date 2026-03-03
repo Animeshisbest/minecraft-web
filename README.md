@@ -35,6 +35,7 @@ Open `http://localhost:8000`.
 - Inventory UI with item selection and gear equip slots.
 - Crafting recipes with input/output validation.
 - Passive mobs (cow/sheep/chicken) and hostile mobs (zombie/skeleton/creeper).
+- Animals and hostile mobs now use richer idle/walk animations (body bob, head motion, and arm swings for humanoids).
 - Day/night cycle with sun/moon visuals and dynamic lighting.
 - Visible first-person player hands with idle/walk/use animations.
 - Hand skin color is sampled from the player skin preview for matching tone.

@@ -1731,6 +1731,8 @@ function makeQuadrupedMesh(bodyMat, headMat, legMat, bodySize, bodyY, headSize, 
   });
 
   root.add(body, head);
+  root.userData.body = body;
+  root.userData.head = head;
   root.userData.legs = legs;
   root.userData.legSwingSigns = [1, -1, -1, 1];
   return root;
@@ -1800,6 +1802,8 @@ function makeChickenMesh() {
   legRight.receiveShadow = true;
   root.add(legRight);
 
+  root.userData.body = body;
+  root.userData.head = head;
   root.userData.legs = [legLeft, legRight];
   root.userData.legSwingSigns = [1, -1];
   return root;
@@ -1838,6 +1842,11 @@ function makeZombieMesh() {
   legRight.receiveShadow = true;
 
   root.add(body, head, armLeft, armRight, legLeft, legRight);
+  root.userData.body = body;
+  root.userData.head = head;
+  root.userData.arms = [armLeft, armRight];
+  root.userData.legs = [legLeft, legRight];
+  root.userData.legSwingSigns = [1, -1];
   return root;
 }
 
@@ -1889,6 +1898,11 @@ function makeSkeletonMesh() {
   legRight.receiveShadow = true;
 
   root.add(body, head, armLeft, armRight, legLeft, legRight);
+  root.userData.body = body;
+  root.userData.head = head;
+  root.userData.arms = [armLeft, armRight];
+  root.userData.legs = [legLeft, legRight];
+  root.userData.legSwingSigns = [1, -1];
   return root;
 }
 
@@ -1921,6 +1935,8 @@ function makeCreeperMesh() {
   });
 
   root.add(body, head);
+  root.userData.body = body;
+  root.userData.head = head;
   root.userData.legs = legs;
   root.userData.legSwingSigns = [1, -1, -1, 1];
   return root;
@@ -1972,6 +1988,9 @@ function spawnEntity(kind) {
       attackCooldown: 0,
       animPhase: Math.random() * Math.PI * 2,
       hp: stats.hp,
+      bodyBaseY: mesh.userData.body?.position.y ?? null,
+      headBaseY: mesh.userData.head?.position.y ?? null,
+      armBaseY: (mesh.userData.arms ?? []).map((arm) => arm.position.y),
     };
     tagEntityMesh(mesh, entity.id);
     entities.push(entity);
@@ -2001,6 +2020,52 @@ function manageMobPopulation(dt) {
 
   spawnEntity(HOSTILE_KINDS[Math.floor(Math.random() * HOSTILE_KINDS.length)]);
   mobSpawnTimer = 0.9;
+}
+
+function animateEntityPose(entity, moved, playerDist, dt) {
+  const meshData = entity.mesh.userData;
+  const pace = moved ? Math.min(10, 4 + entity.speed * 2.2) : 1.6;
+  entity.animPhase += dt * pace;
+  const phase = entity.animPhase;
+  const idleWave = Math.sin(phase * 0.4 + entity.id * 0.17) * 0.02;
+  const walkBob = moved ? Math.abs(Math.sin(phase)) * 0.055 : Math.abs(idleWave) * 0.45;
+  const gait = Math.sin(phase) * (moved ? 0.45 : 0.08);
+
+  if (meshData.legs) {
+    const signs = meshData.legSwingSigns ?? [];
+    meshData.legs.forEach((leg, idx) => {
+      leg.rotation.x = gait * (signs[idx] ?? 1);
+    });
+  }
+
+  if (meshData.body && entity.bodyBaseY != null) {
+    meshData.body.position.y = entity.bodyBaseY + walkBob * 0.55;
+    meshData.body.rotation.x = moved ? Math.sin(phase * 0.5) * 0.03 : idleWave * 0.5;
+  }
+
+  if (meshData.head && entity.headBaseY != null) {
+    meshData.head.position.y = entity.headBaseY + walkBob * 0.7;
+    const lookTilt = moved ? Math.sin(phase * 0.5 + 1) * 0.05 : idleWave * 0.7;
+    meshData.head.rotation.x = lookTilt;
+  }
+
+  if (meshData.arms && meshData.arms.length >= 2) {
+    const armSwing = moved ? Math.sin(phase) * 0.65 : Math.sin(phase * 0.6) * 0.12;
+    const [leftArm, rightArm] = meshData.arms;
+    leftArm.position.y = (entity.armBaseY[0] ?? leftArm.position.y) + walkBob * 0.35;
+    rightArm.position.y = (entity.armBaseY[1] ?? rightArm.position.y) + walkBob * 0.35;
+
+    if (entity.kind === "zombie") {
+      leftArm.rotation.x = -0.72 - armSwing * 0.45;
+      rightArm.rotation.x = -0.72 + armSwing * 0.45;
+    } else if (entity.kind === "skeleton" && playerDist < 18) {
+      leftArm.rotation.x = -0.95 - armSwing * 0.25;
+      rightArm.rotation.x = -1.2 + Math.sin(phase * 1.4) * 0.12;
+    } else {
+      leftArm.rotation.x = armSwing;
+      rightArm.rotation.x = -armSwing;
+    }
+  }
 }
 
 function updateEntities(dt) {
@@ -2063,14 +2128,7 @@ function updateEntities(dt) {
 
     entity.mesh.position.y = findSurfaceY(entity.mesh.position.x, entity.mesh.position.z);
     entity.mesh.rotation.y = entity.dir;
-    if (entity.mesh.userData.legs) {
-      if (moved) entity.animPhase += dt * 9;
-      const gait = Math.sin(entity.animPhase) * (moved ? 0.45 : 0.08);
-      const signs = entity.mesh.userData.legSwingSigns ?? [];
-      entity.mesh.userData.legs.forEach((leg, idx) => {
-        leg.rotation.x = gait * (signs[idx] ?? 1);
-      });
-    }
+    animateEntityPose(entity, moved, playerDist, dt);
   });
 
   if (playerHealth <= 0) {
