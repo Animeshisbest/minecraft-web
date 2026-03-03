@@ -403,7 +403,7 @@ function createMaterials() {
 
 createMaterials();
 
-const playerSkinPreviewUrl = (() => {
+const playerSkinData = (() => {
   const canvas = document.createElement("canvas");
   canvas.width = 32;
   canvas.height = 48;
@@ -434,13 +434,23 @@ const playerSkinPreviewUrl = (() => {
   ctx.fillRect(9, 40, 6, 2);
   ctx.fillRect(17, 40, 6, 2);
 
-  return canvas.toDataURL();
+  const facePx = ctx.getImageData(12, 8, 1, 1).data;
+  const shirtPx = ctx.getImageData(10, 20, 1, 1).data;
+  const skinColor = rgbToHex({ r: facePx[0], g: facePx[1], b: facePx[2] });
+  const sleeveColor = rgbToHex({ r: shirtPx[0], g: shirtPx[1], b: shirtPx[2] });
+
+  return {
+    previewUrl: canvas.toDataURL(),
+    skinColor,
+    sleeveColor,
+  };
 })();
+const playerSkinPreviewUrl = playerSkinData.previewUrl;
 
 function createPlayerHands() {
   const group = new THREE.Group();
-  const skinMat = new THREE.MeshLambertMaterial({ color: 0xf3c89f, depthTest: false, depthWrite: false });
-  const sleeveMat = new THREE.MeshLambertMaterial({ color: 0x2a6fd1, depthTest: false, depthWrite: false });
+  const skinMat = new THREE.MeshLambertMaterial({ color: playerSkinData.skinColor, depthTest: false, depthWrite: false });
+  const sleeveMat = new THREE.MeshLambertMaterial({ color: playerSkinData.sleeveColor, depthTest: false, depthWrite: false });
   const armGeo = new THREE.BoxGeometry(0.14, 0.28, 0.14);
   const cuffGeo = new THREE.BoxGeometry(0.15, 0.1, 0.15);
 
@@ -707,6 +717,10 @@ let mobSpawnTimer = 0;
 let wasNight = false;
 let footstepTimer = 0;
 let handSwingTime = 0;
+let handActionTime = 0;
+let handActionDuration = 0.15;
+let handActionStrength = 0;
+let handActionSide = "right";
 let audioCtx = null;
 const SFX_VOLUME_BOOST = 1.9;
 
@@ -858,6 +872,7 @@ function eatFood() {
   if (!removeFromInventory(EAT_ITEM_ID, 1)) return;
 
   playerHealth = Math.min(MAX_HEALTH, playerHealth + EAT_HEAL);
+  triggerHandAction("both", 0.9, 0.24);
   playSfx("eat");
   updateStatusHud();
   refreshUI();
@@ -1625,6 +1640,13 @@ function updateDayNight(dt) {
   scene.fog.far = 85 + daylight * 65;
 }
 
+function triggerHandAction(side = "right", strength = 1, duration = 0.15) {
+  handActionSide = side;
+  handActionStrength = Math.max(0.1, strength);
+  handActionDuration = Math.max(0.06, duration);
+  handActionTime = handActionDuration;
+}
+
 function updatePlayerHands(dt) {
   const isActive = document.pointerLockElement === renderer.domElement && !inventoryOpen;
   handRig.group.visible = isActive;
@@ -1633,20 +1655,31 @@ function updatePlayerHands(dt) {
   const speed = Math.hypot(velocity.x, velocity.z);
   const moving = canJump && speed > 0.25;
   if (moving) handSwingTime += dt * Math.min(18, 6 + speed * 2.5);
+  handActionTime = Math.max(0, handActionTime - dt);
   const idle = performance.now() * 0.0025;
 
   const swing = moving ? Math.sin(handSwingTime) * 0.06 : Math.sin(idle) * 0.01;
   const rise = moving ? Math.abs(Math.sin(handSwingTime)) * 0.028 : Math.abs(Math.sin(idle)) * 0.007;
+  const roll = moving ? Math.sin(handSwingTime * 0.5) * 0.015 : Math.sin(idle * 1.4) * 0.008;
+  const actionPhase = handActionDuration > 0 ? 1 - handActionTime / handActionDuration : 1;
+  const actionCurve = handActionTime > 0 ? Math.sin(actionPhase * Math.PI) * handActionStrength : 0;
+  const rightPunch = handActionSide !== "left" ? actionCurve : 0;
+  const leftPunch = handActionSide !== "right" ? actionCurve : 0;
+  handRig.group.position.y = moving ? -Math.abs(Math.sin(handSwingTime * 0.5)) * 0.01 : -Math.abs(Math.sin(idle)) * 0.004;
 
   handRig.leftArm.position.y = -0.34 + rise;
   handRig.rightArm.position.y = -0.34 + rise;
-  handRig.leftArm.rotation.x = -0.35 + swing;
-  handRig.rightArm.rotation.x = -0.35 - swing;
+  handRig.leftArm.rotation.x = -0.35 + swing - leftPunch * 0.45;
+  handRig.rightArm.rotation.x = -0.35 - swing - rightPunch * 0.45;
+  handRig.leftArm.rotation.z = 0.1 + roll + leftPunch * 0.04;
+  handRig.rightArm.rotation.z = -0.1 - roll - rightPunch * 0.04;
 
   handRig.leftCuff.position.y = -0.22 + rise;
   handRig.rightCuff.position.y = -0.22 + rise;
   handRig.leftCuff.rotation.x = handRig.leftArm.rotation.x;
   handRig.rightCuff.rotation.x = handRig.rightArm.rotation.x;
+  handRig.leftCuff.rotation.z = handRig.leftArm.rotation.z;
+  handRig.rightCuff.rotation.z = handRig.rightArm.rotation.z;
 }
 
 function findSurfaceY(x, z) {
@@ -2109,6 +2142,7 @@ function handleBlockAction(button) {
   if (button === 0) {
     const entityHit = getEntitySelection();
     if (entityHit) {
+      triggerHandAction("right", 1.15, 0.13);
       hitEntity(entityHit.entity, getAttackDamage());
       updateStatusHud();
       return;
@@ -2123,6 +2157,7 @@ function handleBlockAction(button) {
     const brokenType = getBlock(x, y, z);
     setBlock(x, y, z, 0);
     addToInventory(brokenType, 1);
+    triggerHandAction("right", 1.1, 0.13);
     playSfx("break");
     refreshUI();
     return;
@@ -2133,6 +2168,7 @@ function handleBlockAction(button) {
     if ((inventory[String(selectedType)] ?? 0) > 0 && canPlaceBlockAt(placePos.x, placePos.y, placePos.z)) {
       setBlock(placePos.x, placePos.y, placePos.z, selectedType);
       removeFromInventory(selectedType, 1);
+      triggerHandAction("right", 0.85, 0.11);
       playSfx("place");
       refreshUI();
     }

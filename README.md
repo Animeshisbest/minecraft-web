@@ -36,7 +36,8 @@ Open `http://localhost:8000`.
 - Crafting recipes with input/output validation.
 - Passive mobs (cow/sheep/chicken) and hostile mobs (zombie/skeleton/creeper).
 - Day/night cycle with sun/moon visuals and dynamic lighting.
-- Visible first-person player hands with movement sway.
+- Visible first-person player hands with idle/walk/use animations.
+- Hand skin color is sampled from the player skin preview for matching tone.
 - SFX for gameplay actions (place/break/hurt/craft/etc.).
 
 ## Controls
