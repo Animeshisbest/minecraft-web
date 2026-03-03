@@ -1030,24 +1030,78 @@ function placeCaveFall(x, startY, z, liquidType, maxLength) {
   }
 }
 
-function placeCaveFallsInColumn(x, z, surfaceY) {
-  if (surfaceY <= CAVE_MIN_Y + 4) return;
+function surfaceKey(x, z) {
+  return `${x}|${z}`;
+}
 
-  for (let y = surfaceY - 2; y >= CAVE_MIN_Y + 2; y--) {
-    const roof = getBlock(x, y, z);
-    const below = getBlock(x, y - 1, z);
-    const below2 = getBlock(x, y - 2, z);
-    if (roof === 0 || below !== 0 || below2 !== 0) continue;
+function caveCellKey(x, y, z) {
+  return `${x}|${y}|${z}`;
+}
 
-    const caveDepth = surfaceY - y;
-    const lavaBias = y < 11 || caveDepth > 11;
-    const liquidType = lavaBias && Math.random() < 0.55 ? LAVA_BLOCK_ID : WATER_BLOCK_ID;
-    const chance = liquidType === LAVA_BLOCK_ID ? 0.028 : 0.05;
-    if (Math.random() >= chance) continue;
+function placeCaveFallsByRegion(surfaceHeights) {
+  const visited = new Set();
+  const dirs = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+  ];
 
-    const maxLength = liquidType === LAVA_BLOCK_ID ? 7 : 11;
-    placeCaveFall(x, y - 1, z, liquidType, maxLength);
-    break;
+  for (let x = -WORLD_SIZE / 2; x < WORLD_SIZE / 2; x++) {
+    for (let z = -WORLD_SIZE / 2; z < WORLD_SIZE / 2; z++) {
+      const surfaceY = surfaceHeights.get(surfaceKey(x, z));
+      if (surfaceY == null) continue;
+
+      for (let y = CAVE_MIN_Y + 1; y <= surfaceY - 2; y++) {
+        if (getBlock(x, y, z) !== 0) continue;
+        const startKey = caveCellKey(x, y, z);
+        if (visited.has(startKey)) continue;
+
+        const queue = [{ x, y, z }];
+        visited.add(startKey);
+        const waterCandidates = [];
+        const lavaCandidates = [];
+
+        while (queue.length > 0) {
+          const cur = queue.pop();
+          const curSurface = surfaceHeights.get(surfaceKey(cur.x, cur.z));
+          if (curSurface != null && cur.y <= curSurface - 2) {
+            const roof = getBlock(cur.x, cur.y + 1, cur.z);
+            const below = getBlock(cur.x, cur.y - 1, cur.z);
+            if (roof !== 0 && below === 0) {
+              const depth = curSurface - cur.y;
+              if (depth > 3) waterCandidates.push({ x: cur.x, y: cur.y, z: cur.z });
+              if (cur.y < 11 || depth > 11) lavaCandidates.push({ x: cur.x, y: cur.y, z: cur.z });
+            }
+          }
+
+          for (const [dx, dy, dz] of dirs) {
+            const nx = cur.x + dx;
+            const ny = cur.y + dy;
+            const nz = cur.z + dz;
+            if (nx < -WORLD_SIZE / 2 || nx >= WORLD_SIZE / 2 || nz < -WORLD_SIZE / 2 || nz >= WORLD_SIZE / 2) continue;
+            const ns = surfaceHeights.get(surfaceKey(nx, nz));
+            if (ns == null || ny < CAVE_MIN_Y + 1 || ny > ns - 2) continue;
+            if (getBlock(nx, ny, nz) !== 0) continue;
+            const nk = caveCellKey(nx, ny, nz);
+            if (visited.has(nk)) continue;
+            visited.add(nk);
+            queue.push({ x: nx, y: ny, z: nz });
+          }
+        }
+
+        if (waterCandidates.length > 0 && Math.random() < 0.35) {
+          const c = waterCandidates[Math.floor(Math.random() * waterCandidates.length)];
+          placeCaveFall(c.x, c.y, c.z, WATER_BLOCK_ID, 11);
+        }
+        if (lavaCandidates.length > 0 && Math.random() < 0.28) {
+          const c = lavaCandidates[Math.floor(Math.random() * lavaCandidates.length)];
+          placeCaveFall(c.x, c.y, c.z, LAVA_BLOCK_ID, 7);
+        }
+      }
+    }
   }
 }
 
@@ -1112,10 +1166,12 @@ function chooseOreType(y) {
 }
 
 function generateWorld() {
+  const surfaceHeights = new Map();
   for (let x = -WORLD_SIZE / 2; x < WORLD_SIZE / 2; x++) {
     for (let z = -WORLD_SIZE / 2; z < WORLD_SIZE / 2; z++) {
       const biome = biomeAt(x, z);
       const h = biomeHeight(x, z, biome);
+      surfaceHeights.set(surfaceKey(x, z), h);
       for (let y = 0; y <= h; y++) {
         let type = biome.surface;
         if (y === h) {
@@ -1139,7 +1195,6 @@ function generateWorld() {
         if (shouldCarveCave(x, y, z, h)) setBlock(x, y, z, 0);
       }
       reduceExposedCaveOres(x, z, h, biome.deep);
-      placeCaveFallsInColumn(x, z, h);
       if (h > SEA_LEVEL + 1 && biome.treeChance > 0 && Math.random() < biome.treeChance) {
         const style = biome.kind === BIOMES.TAIGA ? "taiga" : "oak";
         placeTree(x, h + 1, z, style);
@@ -1154,6 +1209,7 @@ function generateWorld() {
       }
     }
   }
+  placeCaveFallsByRegion(surfaceHeights);
 }
 
 function placeTree(x, y, z, style = "oak") {
