@@ -39,7 +39,6 @@ Open `http://localhost:8000`.
 - Day/night cycle with sun/moon visuals and dynamic lighting.
 - Visible first-person player hands with idle/walk/use animations.
 - Hand skin color is sampled from the player skin preview for matching tone.
-- First-person hands render in a dedicated viewmodel pass to avoid world-overlap artifacts.
 - SFX for gameplay actions (place/break/hurt/craft/etc.).
 
 ## Controls

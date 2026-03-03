@@ -85,7 +85,6 @@ const currentSkyColor = new THREE.Color();
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.set(0, 0, 0);
-const viewModelCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -100,8 +99,6 @@ function syncRendererSize() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    viewModelCamera.aspect = w / h;
-    viewModelCamera.updateProjectionMatrix();
   }
 }
 
@@ -132,9 +129,6 @@ const blockGroup = new THREE.Group();
 scene.add(blockGroup);
 const entityGroup = new THREE.Group();
 scene.add(entityGroup);
-const viewModelScene = new THREE.Scene();
-const viewModelLight = new THREE.AmbientLight(0xffffff, 0.95);
-viewModelScene.add(viewModelLight);
 
 const materials = {};
 const hotbarPreviews = {};
@@ -698,7 +692,6 @@ const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 const plantGeo = new THREE.PlaneGeometry(1, 1);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2(0, 0);
-const tempQuat = new THREE.Quaternion();
 const hitOutline = new THREE.LineSegments(
   new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02)),
   new THREE.LineBasicMaterial({ color: 0x000000 })
@@ -747,8 +740,7 @@ yaw.add(pitch);
 pitch.position.y = PLAYER_HEIGHT;
 pitch.add(camera);
 const handRig = createPlayerHands();
-viewModelCamera.add(handRig.group);
-viewModelScene.add(viewModelCamera);
+camera.add(handRig.group);
 scene.add(yaw);
 
 const hudHotbar = document.getElementById("hotbar");
@@ -2446,9 +2438,6 @@ function tick() {
   }
 
   renderer.render(scene, camera);
-  viewModelCamera.quaternion.copy(camera.getWorldQuaternion(tempQuat));
-  renderer.clearDepth();
-  renderer.render(viewModelScene, viewModelCamera);
   requestAnimationFrame(tick);
 }
 tick();
