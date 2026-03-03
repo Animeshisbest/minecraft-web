@@ -56,8 +56,15 @@ Open `http://localhost:8000`.
 
 ## Project Files
 
-- `main.js`: rendering, game logic, entities, world, inventory/crafting, and input.
-- `styles.css`: HUD, hotbar, inventory, and layout styling.
+- `js/main.js`: current runtime entry (rendering, game logic, entities, world, inventory/crafting, and input).
+- `js/scene.js`: scene module scaffold.
+- `js/world.js`: world generation module scaffold.
+- `js/player.js`: player module scaffold.
+- `js/controls.js`: controls module scaffold.
+- `js/blocks.js`: blocks module scaffold.
+- `css/styles.css`: HUD, hotbar, inventory, and layout styling.
+- `assets/textures/`: texture assets folder.
+- `assets/sounds/`: sound assets folder.
 - `index.html`: page shell and UI mount points.
 
 ## Collaboration Workflow

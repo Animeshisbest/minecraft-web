@@ -2,7 +2,7 @@
   "name": "minecraft-web",
   "version": "1.0.0",
   "description": "Simple browser Minecraft-style prototype built with Three.js.",
-  "main": "main.js",
+  "main": "js/main.js",
   "scripts": {
     "test": "echo \"No tests yet\" && exit 0",
     "start": "serve ."
