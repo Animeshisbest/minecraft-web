@@ -17,6 +17,8 @@ const SKELETON_ARROW_SPEED = 17;
 const SKELETON_ARROW_DAMAGE = 10;
 const SKELETON_ARROW_LIFE = 2.6;
 const CAVE_MIN_Y = 3;
+const WATER_BLOCK_ID = 25;
+const LAVA_BLOCK_ID = 26;
 const TOOL_ORDER = ["hand", "wood", "stone", "iron", "diamond"];
 const ARMOR_ORDER = ["none", "leather", "iron", "diamond"];
 const TOOL_DAMAGE_MULT = { hand: 1, wood: 1.15, stone: 1.35, iron: 1.6, diamond: 1.9 };
@@ -47,11 +49,15 @@ const BLOCK_TYPES = {
   22: { name: "IronOre", material: "ironOre", preview: "ironOre" },
   23: { name: "GoldOre", material: "goldOre", preview: "goldOre" },
   24: { name: "DiamondOre", material: "diamondOre", preview: "diamondOre" },
+  25: { name: "Water", material: "water", preview: "water" },
+  26: { name: "Lava", material: "lava", preview: "lava" },
 };
 const HOTBAR_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 let hotbar = [...HOTBAR_IDS];
 
 const PLANT_BLOCK_IDS = new Set([17, 18, 19, 20]);
+const ORE_BLOCK_IDS = new Set([21, 22, 23, 24]);
+const LIQUID_BLOCK_IDS = new Set([WATER_BLOCK_ID, LAVA_BLOCK_ID]);
 
 const RECIPES = [
   { id: "planks", name: "Planks x4", in: { 6: 1 }, out: { 8: 4 } },
@@ -177,6 +183,16 @@ const textures = {
   dirt: createCanvasTexture((ctx) => fillNoise(ctx, 0x8a5c34, 20, 0x6c4424, 0.18)),
   stone: createCanvasTexture((ctx) => fillNoise(ctx, 0x8c8c8c, 18, 0x747474, 0.2)),
   sand: createCanvasTexture((ctx) => fillNoise(ctx, 0xd8c488, 14, 0xe8d8a2, 0.12)),
+  water: createCanvasTexture((ctx) => {
+    fillNoise(ctx, 0x3e8fd6, 12, 0x62b6ff, 0.24);
+    ctx.fillStyle = "#89d2ff";
+    for (let y = 2; y < 16; y += 4) ctx.fillRect(0, y, 16, 1);
+  }),
+  lava: createCanvasTexture((ctx) => {
+    fillNoise(ctx, 0xd86219, 18, 0xffb02f, 0.34);
+    ctx.fillStyle = "#ffde69";
+    for (let x = 1; x < 16; x += 5) ctx.fillRect(x, 0, 1, 16);
+  }),
   grassTop: createCanvasTexture((ctx) => fillNoise(ctx, 0x62a742, 22, 0x4c8c33, 0.2)),
   grassSide: createCanvasTexture((ctx) => {
     fillNoise(ctx, 0x8a5c34, 18, 0x6e4726, 0.12);
@@ -352,6 +368,19 @@ function createMaterials() {
       materials[id] = makeMaterial(textures.leaves, true);
     } else if (def.material === "ice") {
       materials[id] = makeMaterial(textures.ice, true, 0.7);
+    } else if (def.material === "water") {
+      materials[id] = new THREE.MeshLambertMaterial({
+        map: textures.water,
+        transparent: true,
+        opacity: 0.68,
+        depthWrite: false,
+      });
+    } else if (def.material === "lava") {
+      materials[id] = new THREE.MeshLambertMaterial({
+        map: textures.lava,
+        emissive: new THREE.Color(0xff5a00),
+        emissiveIntensity: 0.45,
+      });
     } else if (def.material === "cactus") {
       materials[id] = [
         makeMaterial(textures.cactusSide),
@@ -968,6 +997,60 @@ function shouldCarveCave(x, y, z, surfaceY) {
   return Math.sin(x * 0.045 + z * 0.045 + y * 0.31) > -0.45;
 }
 
+function hasCaveAirNeighbor(x, y, z) {
+  const neighbors = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+  ];
+  return neighbors.some(([dx, dy, dz]) => getBlock(x + dx, y + dy, z + dz) === 0);
+}
+
+function reduceExposedCaveOres(x, z, surfaceY, fillType) {
+  for (let y = CAVE_MIN_Y; y <= surfaceY - 2; y++) {
+    const b = getBlock(x, y, z);
+    if (!ORE_BLOCK_IDS.has(b)) continue;
+    if (!hasCaveAirNeighbor(x, y, z)) continue;
+    setBlock(x, y, z, fillType);
+  }
+}
+
+function placeCaveFall(x, startY, z, liquidType, maxLength) {
+  for (let i = 0; i < maxLength; i++) {
+    const y = startY - i;
+    if (y <= 0) break;
+    const b = getBlock(x, y, z);
+    if (b !== 0 && !LIQUID_BLOCK_IDS.has(b)) break;
+    setBlock(x, y, z, liquidType);
+    const below = getBlock(x, y - 1, z);
+    if (below !== 0 && !LIQUID_BLOCK_IDS.has(below)) break;
+  }
+}
+
+function placeCaveFallsInColumn(x, z, surfaceY) {
+  if (surfaceY <= CAVE_MIN_Y + 4) return;
+
+  for (let y = surfaceY - 2; y >= CAVE_MIN_Y + 2; y--) {
+    const roof = getBlock(x, y, z);
+    const below = getBlock(x, y - 1, z);
+    const below2 = getBlock(x, y - 2, z);
+    if (roof === 0 || below !== 0 || below2 !== 0) continue;
+
+    const caveDepth = surfaceY - y;
+    const lavaBias = y < 11 || caveDepth > 11;
+    const liquidType = lavaBias && Math.random() < 0.55 ? LAVA_BLOCK_ID : WATER_BLOCK_ID;
+    const chance = liquidType === LAVA_BLOCK_ID ? 0.028 : 0.05;
+    if (Math.random() >= chance) continue;
+
+    const maxLength = liquidType === LAVA_BLOCK_ID ? 7 : 11;
+    placeCaveFall(x, y - 1, z, liquidType, maxLength);
+    break;
+  }
+}
+
 function biomeAt(x, z) {
   const n = biomeNoise(x, z);
   if (n < -0.25) {
@@ -1021,10 +1104,10 @@ function biomeHeight(x, z, biome) {
 
 function chooseOreType(y) {
   const roll = Math.random();
-  if (y < 6 && roll < 0.07) return 24;
-  if (y < 10 && roll < 0.12) return 23;
-  if (y < 16 && roll < 0.2) return 22;
-  if (y < 22 && roll < 0.34) return 21;
+  if (y < 6 && roll < 0.03) return 24;
+  if (y < 10 && roll < 0.06) return 23;
+  if (y < 16 && roll < 0.12) return 22;
+  if (y < 22 && roll < 0.2) return 21;
   return 0;
 }
 
@@ -1055,6 +1138,8 @@ function generateWorld() {
       for (let y = CAVE_MIN_Y; y <= h - 2; y++) {
         if (shouldCarveCave(x, y, z, h)) setBlock(x, y, z, 0);
       }
+      reduceExposedCaveOres(x, z, h, biome.deep);
+      placeCaveFallsInColumn(x, z, h);
       if (h > SEA_LEVEL + 1 && biome.treeChance > 0 && Math.random() < biome.treeChance) {
         const style = biome.kind === BIOMES.TAIGA ? "taiga" : "oak";
         placeTree(x, h + 1, z, style);
@@ -1917,7 +2002,7 @@ function getSelection() {
 
 function isSolidAt(x, y, z) {
   const b = getBlock(x, y, z);
-  return b !== 0 && !PLANT_BLOCK_IDS.has(b);
+  return b !== 0 && !PLANT_BLOCK_IDS.has(b) && !LIQUID_BLOCK_IDS.has(b);
 }
 
 function collidesAt(pos) {

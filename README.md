@@ -28,6 +28,8 @@ Open `http://localhost:8000`.
 
 - Procedural world generation with multiple biomes.
 - Cave carving in underground layers for explorable tunnels.
+- Cave waterfalls and lavafalls generated from underground ceilings.
+- Reduced ore density and reduced cave-exposed ore frequency.
 - Block breaking/placing with inventory counts.
 - Hotbar with number-key and mouse-wheel selection.
 - Inventory UI with item selection and gear equip slots.
