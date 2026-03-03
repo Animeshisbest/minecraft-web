@@ -61,7 +61,7 @@ Open `http://localhost:8000`.
 - `js/world.js`: world generation module scaffold.
 - `js/player.js`: player module scaffold.
 - `js/controls.js`: controls module scaffold.
-- `js/blocks.js`: blocks module scaffold.
+- `js/blocks.js`: block definitions, block mesh/material creation, and block previews.
 - `css/styles.css`: HUD, hotbar, inventory, and layout styling.
 - `assets/textures/`: texture assets folder.
 - `assets/sounds/`: sound assets folder.
